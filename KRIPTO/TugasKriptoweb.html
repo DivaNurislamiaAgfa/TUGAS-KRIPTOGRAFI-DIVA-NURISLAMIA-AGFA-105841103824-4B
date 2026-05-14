@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Keamanan User - SHA-256</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --secondary: #10b981;
+            --error: #ef4444;
+            --bg: #f3f4f6;
+            --card: #ffffff;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background: var(--card);
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #1f2937;
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 10px;
+        }
+
+        .tab-menu {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background: #e5e7eb;
+            cursor: pointer;
+            border-radius: 6px;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        .tab-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            color: #4b5563;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+        }
+
+        button.main-btn {
+            width: 100%;
+            padding: 12px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        #result {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            word-break: break-all;
+            display: none;
+        }
+
+        .success { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+        .danger { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+        .info { background: #e0e7ff; color: #3730a3; border: 1px solid #a5b4fc; }
+        
+        /* Dashboard style setelah login */
+        #dashboard {
+            text-align: center;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="authContent">
+        <h1>SISTEM KEAMANAN USER</h1>
+        
+        <div id="navigationTabs" class="tab-menu">
+            <button class="tab-btn active" onclick="showForm('reg')">Registrasi</button>
+            <button class="tab-btn" onclick="showForm('login')">Login</button>
+        </div>
+
+        <div id="regForm">
+            <div class="form-group">
+                <label>Username Baru</label>
+                <input type="text" id="regUser" placeholder="Masukkan username">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="regPass" placeholder="Masukkan password">
+            </div>
+            <button class="main-btn" onclick="handleRegistrasi()">Daftar Sekarang</button>
+        </div>
+
+        <div id="loginForm" style="display:none;">
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="loginUser" placeholder="Username">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="loginPass" placeholder="Password">
+            </div>
+            <button class="main-btn" style="background: var(--secondary);" onclick="handleLogin()">Masuk</button>
+        </div>
+    </div>
+
+    <div id="dashboard">
+        <h1>DASHBOARD</h1>
+        <div class="success" style="padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+            Selamat datang, <span id="displayUser"></span>!<br>
+            Anda berhasil masuk ke sistem.
+        </div>
+        <button class="main-btn" style="background: var(--error);" onclick="handleLogout()">Keluar (Logout)</button>
+    </div>
+
+    <div id="result"></div>
+</div>
+
+<script>
+    const user_db = {};
+
+    async function hashPassword(password) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(password);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    function showForm(type) {
+        const regF = document.getElementById('regForm');
+        const logF = document.getElementById('loginForm');
+        const res = document.getElementById('result');
+        const btns = document.querySelectorAll('.tab-btn');
+        
+        res.style.display = 'none';
+        btns.forEach(b => b.classList.remove('active'));
+
+        if(type === 'reg') {
+            regF.style.display = 'block';
+            logF.style.display = 'none';
+            btns[0].classList.add('active');
+        } else {
+            regF.style.display = 'none';
+            logF.style.display = 'block';
+            btns[1].classList.add('active');
+        }
+    }
+
+    async function handleRegistrasi() {
+        const user = document.getElementById('regUser').value;
+        const pass = document.getElementById('regPass').value;
+
+        if (!user || !pass) {
+            showResult("Harap isi semua field.", "danger");
+            return;
+        }
+
+        if (user_db[user]) {
+            showResult("Username sudah terdaftar!", "danger");
+            return;
+        }
+
+        const hashed = await hashPassword(pass);
+        user_db[user] = hashed;
+
+        showResult(`User berhasil didaftarkan!<br><strong>Hash disimpan:</strong><br>${hashed}`, "info");
+        
+        // Bersihkan input
+        document.getElementById('regUser').value = '';
+        document.getElementById('regPass').value = '';
+    }
+
+    async function handleLogin() {
+        const user = document.getElementById('loginUser').value;
+        const pass = document.getElementById('loginPass').value;
+        
+        if (user_db[user]) {
+            const hashedInput = await hashPassword(pass);
+            
+            if (user_db[user] === hashedInput) {
+                // Sembunyikan form login & tampilkan dashboard
+                document.getElementById('authContent').style.display = 'none';
+                document.getElementById('result').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+                document.getElementById('displayUser').innerText = user;
+            } else {
+                showResult("Status Login: GAGAL! Password salah.", "danger");
+            }
+        } else {
+            showResult("Status Login: GAGAL! Username tidak ditemukan.", "danger");
+        }
+    }
+
+    function handleLogout() {
+        // Sembunyikan dashboard & tampilkan kembali form login
+        document.getElementById('dashboard').style.display = 'none';
+        document.getElementById('authContent').style.display = 'block';
+        
+        // Reset input login
+        document.getElementById('loginUser').value = '';
+        document.getElementById('loginPass').value = '';
+        
+        // Tampilkan pesan logout
+        showResult("Anda telah keluar dari sistem.", "info");
+        showForm('login');
+    }
+
+    function showResult(message, type) {
+        const resDiv = document.getElementById('result');
+        resDiv.style.display = 'block';
+        resDiv.className = type;
+        resDiv.innerHTML = message;
+    }
+</script>
+
+</body>
+</html>
